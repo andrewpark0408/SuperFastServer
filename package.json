@@ -1,0 +1,31 @@
+{
+  "name": "superfastserver",
+  "version": "1.0.0",
+  "description": "Migration of an eCommerce Monolithic Architecture to a Service Oriented Architecture",
+  "main": "index.js",
+  "scripts": {
+    "server-dev": "nodemon --watch server server/index.js",
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/unoriginal1234/SuperFastServer.git"
+  },
+  "keywords": [
+    "server",
+    "database"
+  ],
+  "author": "FoF",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/unoriginal1234/SuperFastServer/issues"
+  },
+  "homepage": "https://github.com/unoriginal1234/SuperFastServer#readme",
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.18.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  }
+}
