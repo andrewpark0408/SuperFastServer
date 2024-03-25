@@ -60,7 +60,7 @@ async function loadCsvIntoTable(inputFile, tableName) {
     console.timeEnd(`Loading ${tableName}`);
   } catch (error) {
     console.error(`Error loading ${tableName}:`, error);
-    throw error; // Re-throw the error to propagate it
+    // throw error; // Re-throw the error to propagate it
   }
 }
 
