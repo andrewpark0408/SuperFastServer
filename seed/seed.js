@@ -26,57 +26,62 @@ const client = new Client({
 async function loadCsvIntoTable(inputFile, tableName) {
   console.time(`Loading ${tableName}`);
 
-  // Truncate Table
-  await client.query(`TRUNCATE ${tableName} CASCADE`);
+  try {
+    // Truncate Table
+    await client.query(`TRUNCATE ${tableName} CASCADE`);
 
-  let copyQuery = `COPY ${tableName} FROM STDIN CSV HEADER`;
-  if (tableName === 'reviewsall') {
+    let copyQuery = `COPY ${tableName} FROM STDIN CSV HEADER`;
+    if (tableName === 'reviewsall') {
       copyQuery = `COPY ${tableName}(id, product_id, rating, unix_timestamp, summary, body, recommend, reported, reviewer_name, reviewer_email, response, helpfulness) FROM STDIN CSV HEADER`;
-  } else if (tableName === 'characteristic_reviews') {
+    } else if (tableName === 'characteristic_reviews') {
       copyQuery = `COPY ${tableName}(id, characteristic_id, review_id, value) FROM STDIN CSV HEADER`;
-  }
+    }
 
-  const stream = client.query(copyFrom(copyQuery));
-  const fileStream = fs.createReadStream(inputFile);
+    const stream = client.query(copyFrom(copyQuery));
+    const fileStream = fs.createReadStream(inputFile);
 
-  await new Promise((resolve, reject) => {
+    await new Promise((resolve, reject) => {
       fileStream.on('error', reject);
       stream.on('error', reject);
       stream.on('finish', resolve);
       fileStream.pipe(stream);
-  });
+    });
 
-  if (tableName === 'reviewsall') {
-    console.time('Date conversion'); // Start timing
-    console.log('Converting unix_timestamp to date...');
-    await client.query(`
+    if (tableName === 'reviewsall') {
+      console.time('Date conversion'); // Start timing
+      console.log('Converting unix_timestamp to date...');
+      await client.query(`
         UPDATE reviewsall
         SET date = to_timestamp(unix_timestamp / 1000.0) AT TIME ZONE 'UTC'
         WHERE date IS NULL  -- This ensures that we only update rows where date is NULL
-    `);
-    console.timeEnd('Date conversion'); // End timing and log the time taken
+      `);
+      console.timeEnd('Date conversion'); // End timing and log the time taken
+    }
+    console.timeEnd(`Loading ${tableName}`);
+  } catch (error) {
+    console.error(`Error loading ${tableName}:`, error);
+    throw error; // Re-throw the error to propagate it
   }
-  console.timeEnd(`Loading ${tableName}`);
 }
 
 async function loadAllCsvs() {
   try {
-      await client.connect();
-      console.log('Connected to PostgreSQL database');
+    await client.connect();
+    console.log('Connected to PostgreSQL database');
 
-      await loadCsvIntoTable(inputFileProducts, tableProducts);
-      await loadCsvIntoTable(inputFileCharacteristics, tableCharacteristics);
-      await loadCsvIntoTable(inputFileReviews, tableReviews);
-      await loadCsvIntoTable(inputFileCharacteristicReviews, tableCharacteristicReviews);
-      await loadCsvIntoTable(inputFileReviewsPhotos, tableReviewsPhotos);
+    await loadCsvIntoTable(inputFileProducts, tableProducts);
+    await loadCsvIntoTable(inputFileCharacteristics, tableCharacteristics);
+    await loadCsvIntoTable(inputFileReviews, tableReviews);
+    await loadCsvIntoTable(inputFileCharacteristicReviews, tableCharacteristicReviews);
+    await loadCsvIntoTable(inputFileReviewsPhotos, tableReviewsPhotos);
 
-      console.log('All CSV files have been successfully imported.');
+    console.log('All CSV files have been successfully imported.');
 
   } catch (error) {
-      console.error('Error during CSV load:', error);
+    console.error('Error during CSV load:', error);
   } finally {
-      client.end();
-      console.log('PostgreSQL client connection closed');
+    client.end();
+    console.log('PostgreSQL client connection closed');
   }
 }
 
