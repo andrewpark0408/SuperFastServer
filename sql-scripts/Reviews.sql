@@ -10,6 +10,7 @@ CREATE TABLE Products (
 );
 
 CREATE TABLE ReviewsAll (
+    id SERIAL PRIMARY KEY,
     product_id INTEGER NOT NULL,
     rating INTEGER CHECK (rating >= 1 AND rating <= 5),
     date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,

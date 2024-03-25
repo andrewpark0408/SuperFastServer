@@ -32,6 +32,8 @@ async function loadCsvIntoTable(inputFile, tableName) {
   let copyQuery = `COPY ${tableName} FROM STDIN CSV HEADER`;
   if (tableName === 'reviewsall') {
       copyQuery = `COPY ${tableName}(id, product_id, rating, unix_timestamp, summary, body, recommend, reported, reviewer_name, reviewer_email, response, helpfulness) FROM STDIN CSV HEADER`;
+  } else if (tableName === 'characteristic_reviews') {
+      copyQuery = `COPY ${tableName}(id, characteristic_id, review_id, value) FROM STDIN CSV HEADER`;
   }
 
   const stream = client.query(copyFrom(copyQuery));
@@ -63,8 +65,8 @@ async function loadAllCsvs() {
       console.log('Connected to PostgreSQL database');
 
       await loadCsvIntoTable(inputFileProducts, tableProducts);
-      await loadCsvIntoTable(inputFileReviews, tableReviews);
       await loadCsvIntoTable(inputFileCharacteristics, tableCharacteristics);
+      await loadCsvIntoTable(inputFileReviews, tableReviews);
       await loadCsvIntoTable(inputFileCharacteristicReviews, tableCharacteristicReviews);
       await loadCsvIntoTable(inputFileReviewsPhotos, tableReviewsPhotos);
 

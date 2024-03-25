@@ -1,7 +1,7 @@
-DROP TABLE IF EXISTS Review_Characteristics, Photos, ReviewsAll, Characteristics, Product_Characteristics, Products CASCADE;
+DROP TABLE IF EXISTS Review_Characteristics, Photos, ReviewsAll, Characteristics, Product_Characteristics, Reviews_Photos, characteristic_reviews, Products CASCADE;
 
 CREATE TABLE Products (
-    product_id SERIAL PRIMARY KEY,
+    product_id INTEGER PRIMARY KEY,  -- Changed from SERIAL to INTEGER
     name VARCHAR(255) NOT NULL,
     slogan TEXT,
     description TEXT,
@@ -10,11 +10,11 @@ CREATE TABLE Products (
 );
 
 CREATE TABLE ReviewsAll (
-    id SERIAL PRIMARY KEY,
-    product_id INTEGER NOT NULL,
+    id INTEGER PRIMARY KEY,  -- Changed from SERIAL to INTEGER
+    product_id INTEGER NOT NULL REFERENCES Products,
     rating INTEGER CHECK (rating >= 1 AND rating <= 5),
     date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    unix_timestamp BIGINT,  -- Adding the unix_timestamp column
+    unix_timestamp BIGINT,
     summary TEXT,
     body TEXT,
     recommend BOOLEAN,
@@ -22,36 +22,32 @@ CREATE TABLE ReviewsAll (
     reviewer_name VARCHAR(100),
     reviewer_email VARCHAR(255),
     response TEXT,
-    helpfulness INTEGER DEFAULT 0,
-    FOREIGN KEY (product_id) REFERENCES Products(product_id)
+    helpfulness INTEGER DEFAULT 0
 );
 
-CREATE TABLE Photos (
-    photo_id SERIAL PRIMARY KEY,
-    review_id INTEGER NOT NULL,
-    url TEXT NOT NULL,
-    FOREIGN KEY (review_id) REFERENCES ReviewsAll(id)
+CREATE TABLE Reviews_Photos (
+    photo_id INTEGER PRIMARY KEY,  -- Changed from SERIAL to INTEGER
+    review_id INTEGER NOT NULL REFERENCES ReviewsAll,
+    url TEXT NOT NULL
 );
 
 CREATE TABLE Characteristics (
-    id SERIAL PRIMARY KEY,
-    product_id INTEGER NOT NULL,
+    id INTEGER PRIMARY KEY,  -- Changed from SERIAL to INTEGER
+    product_id INTEGER NOT NULL REFERENCES Products,
     name VARCHAR(255) NOT NULL
 );
 
-CREATE TABLE Review_Characteristics (
+CREATE TABLE Characteristic_Reviews (
+    id SERIAL PRIMARY KEY,
     review_id INTEGER NOT NULL,
     characteristic_id INTEGER NOT NULL,
     value INTEGER CHECK (value >= 1 AND value <= 5),
-    PRIMARY KEY (review_id, characteristic_id),
     FOREIGN KEY (review_id) REFERENCES ReviewsAll(id),
     FOREIGN KEY (characteristic_id) REFERENCES Characteristics(id)
 );
 
 CREATE TABLE Product_Characteristics (
-    product_id INTEGER NOT NULL,
-    characteristic_id INTEGER NOT NULL,
-    PRIMARY KEY (product_id, characteristic_id),
-    FOREIGN KEY (product_id) REFERENCES Products(product_id),
-    FOREIGN KEY (characteristic_id) REFERENCES Characteristics(id)
+    product_id INTEGER NOT NULL REFERENCES Products,
+    characteristic_id INTEGER NOT NULL REFERENCES Characteristics,
+    PRIMARY KEY (product_id, characteristic_id)
 );
