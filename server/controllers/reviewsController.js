@@ -1,4 +1,5 @@
 require('dotenv').config();
+const { v4: uuidv4 } = require('uuid');
 const { Client } = require('pg');
 
 const client = new Client({
@@ -123,7 +124,7 @@ const ReviewsController = {
         res.status(200).json({
             product_id,
             ratings,
-            recommended,  // Include the recommended count in the response
+            recommended,
             characteristics,
         });
     } catch (error) {
@@ -134,36 +135,52 @@ const ReviewsController = {
 
   addReview: async (req, res) => {
     try {
-        const { product_id, rating, summary, body, recommend, reviewer_name, reviewer_email, photos, characteristics } = req.body;
+        const { product_id, rating, summary, body, recommend, reviewer_name, reviewer_email, response, helpfulness, photos, characteristics } = req.body;
+
+        console.log('Received request to add review:', req.body);
 
         // Start transaction
         await client.query('BEGIN');
+        console.log('Transaction started');
 
-        // Insert the main review data
+        // Log before inserting the main review data
+        console.log('Inserting main review data...');
         const reviewInsertQuery = `
-            INSERT INTO reviewsall (product_id, rating, summary, body, recommend, reviewer_name, reviewer_email)
-            VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`;
-        const reviewInsertResult = await client.query(reviewInsertQuery, [product_id, rating, summary, body, recommend, reviewer_name, reviewer_email]);
-        const reviewId = reviewInsertResult.rows[0].id;
+            INSERT INTO "reviewsall"
+            (product_id, rating, date, summary, body, recommend, reported, reviewer_name, reviewer_email, response, helpfulness)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            RETURNING id
+        `;
+        const dateNow = Date.now(); // Assuming you want to capture the current timestamp for the review
+        const reported = false; // Assuming a new review is not reported by default
+        const reviewValues = [product_id, rating, dateNow, summary, body, recommend, reported, reviewer_name, reviewer_email, response, helpfulness];
+        const reviewResult = await client.query(reviewInsertQuery, reviewValues);
+        const reviewId = reviewResult.rows[0].id;
+        console.log('Main review data inserted with ID:', reviewId);
 
         // Insert related photos
         if (photos && photos.length) {
+            console.log('Inserting photos...');
+            const photoInsertQuery = `INSERT INTO reviews_photos (review_id, url) VALUES ($1, $2)`;
             for (const photoUrl of photos) {
-                const photoInsertQuery = `INSERT INTO reviews_photos (review_id, url) VALUES ($1, $2)`;
                 await client.query(photoInsertQuery, [reviewId, photoUrl]);
             }
+            console.log('Photos inserted');
         }
 
         // Insert related characteristics
-        if (characteristics) {
+        if (characteristics && typeof characteristics === 'object') {
+            console.log('Inserting characteristics...');
+            const charInsertQuery = `INSERT INTO characteristic_reviews (characteristic_id, review_id, value) VALUES ($1, $2, $3)`;
             for (const [charId, value] of Object.entries(characteristics)) {
-                const charInsertQuery = `INSERT INTO characteristic_reviews (review_id, characteristic_id, value) VALUES ($1, $2, $3)`;
-                await client.query(charInsertQuery, [reviewId, charId, value]);
+                await client.query(charInsertQuery, [charId, reviewId, value]);
             }
+            console.log('Characteristics inserted');
         }
 
         // Commit transaction
         await client.query('COMMIT');
+        console.log('Transaction committed');
 
         res.status(201).json({ message: 'Review added successfully', reviewId: reviewId });
     } catch (error) {
@@ -172,15 +189,14 @@ const ReviewsController = {
         console.error('Error adding review:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
-  },
-
+},
 
   markReviewHelpful: async (req, res) => {
     try {
         const { review_id } = req.params;
         const query = 'UPDATE reviewsall SET helpfulness = helpfulness + 1 WHERE id = $1';
         await client.query(query, [review_id]);
-        res.status(204).send();
+        res.status(204).send('Review marked as helpful');
     } catch (error) {
         console.error('Error marking review as helpful:', error);
         res.status(500).json({ error: 'Internal server error' });
@@ -192,7 +208,7 @@ const ReviewsController = {
           const { review_id } = req.params;
           const query = 'UPDATE reviewsall SET reported = true WHERE id = $1';
           await client.query(query, [review_id]);
-          res.status(204).send();
+          res.status(204).json({ message: 'Review has been reported' });
       } catch (error) {
           console.error('Error reporting review:', error);
           res.status(500).json({ error: 'Internal server error' });
