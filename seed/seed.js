@@ -1,6 +1,6 @@
 require('dotenv').config();
 const fs = require('fs');
-const { Client } = require('pg');
+const { Pool } = require('pg');
 const copyFrom = require('pg-copy-streams').from;
 
 const inputFileReviews = './csv-imports/reviews.csv';
@@ -15,7 +15,7 @@ const tableCharacteristics = 'characteristics';
 const tableProducts = 'products';
 const tableReviewsPhotos = 'reviews_photos';
 
-const client = new Client({
+const pool = new Pool({
   user: process.env.PGUSER,
   password: process.env.PGPASSWORD,
   host: process.env.PGHOST,
@@ -26,17 +26,13 @@ const client = new Client({
 async function loadCsvIntoTable(inputFile, tableName) {
   console.time(`Loading ${tableName}`);
 
+  const client = await pool.connect();
+
   try {
     // Truncate Table
     await client.query(`TRUNCATE ${tableName} CASCADE`);
 
     let copyQuery = `COPY ${tableName} FROM STDIN CSV HEADER`;
-    if (tableName === 'reviewsall') {
-      copyQuery = `COPY ${tableName}(id, product_id, rating, unix_timestamp, summary, body, recommend, reported, reviewer_name, reviewer_email, response, helpfulness) FROM STDIN CSV HEADER`;
-    } else if (tableName === 'characteristic_reviews') {
-      copyQuery = `COPY ${tableName}(id, characteristic_id, review_id, value) FROM STDIN CSV HEADER`;
-    }
-
     const stream = client.query(copyFrom(copyQuery));
     const fileStream = fs.createReadStream(inputFile);
 
@@ -47,26 +43,27 @@ async function loadCsvIntoTable(inputFile, tableName) {
       fileStream.pipe(stream);
     });
 
-    if (tableName === 'reviewsall') {
-      console.time('Date conversion'); // Start timing
-      console.log('Converting unix_timestamp to date...');
-      await client.query(`
-        UPDATE reviewsall
-        SET date = to_timestamp(unix_timestamp / 1000.0) AT TIME ZONE 'UTC'
-        WHERE date IS NULL  -- This ensures that we only update rows where date is NULL
-      `);
-      console.timeEnd('Date conversion'); // End timing and log the time taken
-    }
+    // // Perform any necessary data transformations after loading
+    // if (tableName === 'reviewsall') {
+    //   console.time('Date conversion'); // Start timing
+    //   console.log('Converting unix_timestamp to date...');
+    //   await client.query(`
+    //     UPDATE reviewsall
+    //     SET date = to_timestamp(unix_timestamp / 1000.0) AT TIME ZONE 'UTC'
+    //     WHERE date IS NULL  -- This ensures that we only update rows where date is NULL
+    //   `);
+    //   console.timeEnd('Date conversion'); // End timing and log the time taken
+    // }
     console.timeEnd(`Loading ${tableName}`);
   } catch (error) {
     console.error(`Error loading ${tableName}:`, error);
-    // throw error; // Re-throw the error to propagate it
+  } finally {
+    client.release();
   }
 }
 
 async function loadAllCsvs() {
   try {
-    await client.connect();
     console.log('Connected to PostgreSQL database');
 
     await loadCsvIntoTable(inputFileProducts, tableProducts);
@@ -80,7 +77,6 @@ async function loadAllCsvs() {
   } catch (error) {
     console.error('Error during CSV load:', error);
   } finally {
-    client.end();
     console.log('PostgreSQL client connection closed');
   }
 }

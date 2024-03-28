@@ -8,6 +8,7 @@ const express = require('express')
 const app = express()
 const port = 3000
 
+app.use(express.static(path.join()))
 const reviewsRoutes = require('./routes/reviewsRoutes');
 app.use(express.json());
 
