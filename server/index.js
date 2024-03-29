@@ -8,7 +8,14 @@ const express = require('express')
 const app = express()
 const port = 3000
 
-app.use(express.static(path.join()))
+app.use((req, res, next) => {
+    res.setHeader('X-Server-ID', 'Server1'); 
+    next();
+ });
+
+//app.use(express.static(path.join(__dirname,'../public/')));
+
+
 const reviewsRoutes = require('./routes/reviewsRoutes');
 app.use(express.json());
 
